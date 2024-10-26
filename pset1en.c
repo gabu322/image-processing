@@ -15,12 +15,13 @@ typedef struct {
     unsigned char* pixels;
 } Image;
 
-// Function to load the image using stb_image library
-Image* load_image(const char* filename) {
+/** @brief Load an image from a file
+ */
+Image* loadImage(const char* filename) {
     int width, height, channels;
-    unsigned char* img_data = stbi_load(filename, &width, &height, &channels, 0);
+    unsigned char* imgData = stbi_load(filename, &width, &height, &channels, 0);
 
-    if (!img_data) {
+    if (!imgData) {
         printf("Error loading image: %s\n", filename);
         return NULL;
     }
@@ -29,11 +30,11 @@ Image* load_image(const char* filename) {
     img->width = width;
     img->height = height;
     img->channels = channels;
-    img->pixels = img_data;
+    img->pixels = imgData;
 
     printf("Image loaded: %s\n", filename);
     printf("Dimensions: %dx%d, Channels: %d\n", width, height, channels);
-
+    printf("Type: %s\n", (channels == 4) ? "RGBA" : (channels == 3) ? "RGB" : "Black and White");
     return img;
 }
 
@@ -59,7 +60,7 @@ unsigned char* convertBnW(Image* img) {
             BnWPixels[i] = img->pixels[i];
         }
         else {
-            printf("Unsupported image mode with %d channels\n", img->channels);
+            printf("Unsupported image type");
             free(BnWPixels);
             return NULL;
         }
@@ -67,21 +68,25 @@ unsigned char* convertBnW(Image* img) {
     return BnWPixels;
 }
 
-// Function to save the grayscale image
+/** @brief Save an image to a file
+ *
+ * @param filename The name the file will be saved as
+ * @param img The image that will be saved
+ *
+ * @return Returns 0 if the image was saved successfully, and a non-zero value otherwise
+ */
 void saveImage(const char* filename, Image const* img) {
-    // Calculate the stride (number of bytes in a row of the image)
-    int stride = img->width * 1;
-
-    // Save the grayscale image as PNG
-    int success = stbi_write_png(filename, img->width, img->height, 1, img->pixels, stride);
+    bool success = stbi_write_png(filename, img->width, img->height, img->channels, img->pixels, img->width * img->channels);
 
     if (success) {
         printf("Image saved successfully: %s\n", filename);
     }
     else {
         printf("Error saving image: %s\n", filename);
-        // Handle the error appropriately, e.g., by returning an error code or cleaning up resources
+
     }
+
+    return success;
 }
 
 int clamp(int value, int min, int max) {
@@ -201,32 +206,9 @@ void free_image(Image* img) {
 }
 
 int main() {
-    // declare a string here
-    Image* baseImage = load_image("test_images/centered_pixel.png");
-    // Image *updatedImage = load_image("test_results/twocats_blur_01.png");
-
-    if (!baseImage) {
-        return 1;
-    }
-
-    // apply a kernel to move one to the side
-    float kernel[3][3] = {
-        {0, 0, 0,},
-        {0, 0, 1,},
-        {0, 0, 0}
-    };
-
-    baseImage = applyKernel(baseImage, kernel, 3);
-    // Save the image
+    Image* baseImage = loadImage("test_images/centered_pixel.png");
     saveImage("output_images/centered_pixel.png", baseImage);
-
-    // int equalImages = compareImagesQuantity(baseImage, blurredImage);
-    // printf("Images are equal: %d\n", equalImages);
-
-
-    free_image(baseImage);
-    // free_image(blurredImage);
-
-
     return 0;
+    // declare a string here
+
 }
