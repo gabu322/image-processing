@@ -1,0 +1,8 @@
+*.exe
+
+.vscode
+.editorconfig
+
+tempCodeRunnerFile.c
+
+output_images
