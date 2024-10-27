@@ -16,6 +16,7 @@ typedef struct {
     unsigned char* pixels;
 } Image;
 
+
 /** @brief Load an image from a file
  *
  * @param filename The name of the file to load
@@ -54,7 +55,7 @@ Image* loadImage(const char* filename) {
  *
  */
 void saveImage(const char* filename, const Image* img) {
-    bool imageSaved = stbi_write_png(filename, img->width, img->height, 1, img->pixels, img->width);
+    bool imageSaved = stbi_write_png(filename, img->width, img->height, img->channels, img->pixels, img->width * img->channels);
 
     if (imageSaved) {
         printf("Image saved successfully: %s\n", filename);
@@ -62,6 +63,60 @@ void saveImage(const char* filename, const Image* img) {
     else {
         printf("Error saving image: %s\n", filename);
     }
+}
+
+/** @brief Free the memory allocated for an image
+ *
+ * @param img The image that will be freed
+ */
+void freeImage(Image* img) {
+    stbi_image_free(img->pixels);
+    free(img);
+}
+
+/** @brief Clamp a value to a range
+ *
+ * @param value The value that will be clamped
+ * @param min The minimum value
+ * @param max The maximum value
+ *
+ * @return The clamped value
+ */
+int clamp(int value, int min, int max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+/** @brief Invert the colors of an image
+ *
+ * @param img The image that will be inverted
+ *
+ * @return The inverted image
+ */
+Image* invertPixels(const Image* img) {
+    Image* invertedImage = (Image*)malloc(sizeof(Image));
+    if (!invertedImage) {
+        printf("Error allocating memory for inverted image\n");
+        return NULL;
+    }
+
+    invertedImage->width = img->width;
+    invertedImage->height = img->height;
+    invertedImage->channels = img->channels;
+    invertedImage->pixels = (unsigned char*)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
+    if (!invertedImage->pixels) {
+        free(invertedImage);
+        printf("Error allocating memory for inverted image pixels\n");
+        return NULL;
+    }
+
+    // Invert the pixel values
+    for (int i = 0; i < img->width * img->height * img->channels; ++i) {
+        invertedImage->pixels[i] = 255 - img->pixels[i];
+    }
+
+    return invertedImage;
 }
 
 /** @brief Convert an image to black and white
@@ -132,50 +187,49 @@ Image* applyKernel(const Image* img, const float* kernel, const int kernelSize) 
     output->width = img->width;
     output->height = img->height;
     output->channels = img->channels;
-    output->pixels = (unsigned char*)malloc(img->width * img->height * sizeof(unsigned char));
+    output->pixels = (unsigned char*)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
     if (!output->pixels) {
         free(output);
         printf("Error allocating memory for output image\n");
         return NULL;
     }
 
-
-    // Pass through each pixel in the image
+    // Traverse each pixel in the image
     for (int imgY = 0; imgY < img->height; imgY++) {
         for (int imgX = 0; imgX < img->width; imgX++) {
-            float pixelCalculatedValue = 0.0f;
+            // Process each channel (e.g., R, G, B for RGB)
+            for (int channelIndex = 0; channelIndex < img->channels; channelIndex++) {
+                float pixelValue = 0.0f;
 
-            // Pass through each pixel in the kernel
-            for (int kernelY = -kernelSize / 2; kernelY <= kernelSize / 2; kernelY++) {
-                for (int kernelX = -kernelSize / 2; kernelX <= kernelSize / 2; kernelX++) {
+                // Traverse each position in the kernel
+                for (int kernelY = -kernelSize / 2; kernelY <= kernelSize / 2; kernelY++) {
+                    for (int kernelX = -kernelSize / 2; kernelX <= kernelSize / 2; kernelX++) {
 
-                    // Calculate the position of the kernel pixel and clamp it to the image boundaries
-                    int kernelPosX = imgX + kernelX;
-                    if (kernelPosX < 0) kernelPosX = 0;
-                    if (kernelPosX >= img->width) kernelPosX = img->width - 1;
+                        // Calculate the position of the neighboring pixel, clamped to image boundaries
+                        int pixelX = clamp(imgX + kernelX, 0, img->width - 1);
+                        int pixelY = clamp(imgY + kernelY, 0, img->height - 1);
 
-                    int kernelPosY = imgY + kernelY;
-                    if (kernelPosY < 0) kernelPosY = 0;
-                    if (kernelPosY >= img->height) kernelPosY = img->height - 1;
+                        // Calculate the position (index) in the image and kernel
+                        int pixelIndex = (pixelY * img->width + pixelX) * img->channels + channelIndex;
+                        int kernelIndex = (kernelY + kernelSize / 2) * kernelSize + (kernelX + kernelSize / 2);
 
-                    // Calculate the position (index) of the pixel in the image and the kernel
-                    int imagIndex = kernelPosX + img->width * kernelPosY;
-                    int kernelIndex = (kernelY + kernelSize / 2) * kernelSize + (kernelX + kernelSize / 2);
-
-                    pixelCalculatedValue += img->pixels[imagIndex] * kernel[kernelIndex];
+                        pixelValue += img->pixels[pixelIndex] * kernel[kernelIndex];
+                    }
                 }
+
+                // Clamp the pixel value to the 0-255 range
+                pixelValue = clamp((int)pixelValue, 0, 255);
+
+                // Set the output pixel value
+                int outputIndex = (imgY * img->width + imgX) * img->channels + channelIndex;
+                output->pixels[outputIndex] = (unsigned char)pixelValue;
             }
-
-            // Clamp the pixel value to the 0-255 range
-            if (pixelCalculatedValue < 0) pixelCalculatedValue = 0;
-            if (pixelCalculatedValue > 255) pixelCalculatedValue = 255;
-
-            output->pixels[imgX + img->width * imgY] = (unsigned char)pixelCalculatedValue;
         }
     }
 
     return output;
 }
+
 
 /** @brief Apply a blur effect to an image, based on a value of blurLevel that will transform in a kernel of size (blurLevel * 2 + 1)
  *
@@ -212,13 +266,126 @@ Image* applyBlur(const Image* img, int blurLevel) {
     return blurredImage;
 }
 
-/** @brief Free the memory allocated for an image
+/** @brief Apply a sharpen effect to an image
  *
- * @param img The image that will be freed
+ * @param img The image that will be applied the sharpen effect
+ *
+ * @return The sharpened image
  */
-void free_image(Image* img) {
-    stbi_image_free(img->pixels);
-    free(img);
+Image* applySharpen(const Image* img, int sharpenLevel) {
+    if (sharpenLevel < 1) {
+        printf("Sharpen level must be at least 1\n");
+        return NULL;
+    }
+
+    Image* sharpenedImage = (Image*)malloc(sizeof(Image));
+    if (!sharpenedImage) {
+        printf("Error allocating memory for sharpened image\n");
+        return NULL;
+    }
+
+    sharpenedImage->width = img->width;
+    sharpenedImage->height = img->height;
+    sharpenedImage->channels = img->channels;
+    sharpenedImage->pixels = (unsigned char*)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
+    if (!sharpenedImage->pixels) {
+        free(sharpenedImage);
+        printf("Error allocating memory for sharpened image pixels\n");
+        return NULL;
+    }
+
+    Image* blurredImage = applyBlur(img, sharpenLevel);
+
+    // Traverse each pixel in the image
+    for (int imgY = 0; imgY < img->height; imgY++) {
+        for (int imgX = 0; imgX < img->width; imgX++) {
+            // Process each channel (e.g., R, G, B for RGB)
+            for (int channelIndex = 0; channelIndex < img->channels; channelIndex++) {
+                int imageIndex = (imgY * img->width + imgX) * img->channels + channelIndex;
+
+                // Calculate the sharpened pixel value and clamp it to the 0-255 range
+                int sharpenedValue = clamp((img->pixels[imageIndex] * 2) - blurredImage->pixels[imageIndex], 0, 255);
+
+                // Set the output pixel value
+                sharpenedImage->pixels[imageIndex] = (unsigned char)sharpenedValue;
+            }
+        }
+    }
+
+    return sharpenedImage;
+}
+
+/** @brief Apply an edge detection effect to an image
+ *
+ * @param img The image that will be applied the edge detection effect
+ *
+ * @return The image after the edge detection has been applied
+ */
+Image* applyEdgeDetection(const Image* img) {
+    Image* outputImage = (Image*)malloc(sizeof(Image));
+    if (!outputImage) {
+        printf("Error allocating memory for output image\n");
+        return NULL;
+    }
+
+    outputImage->width = img->width;
+    outputImage->height = img->height;
+    outputImage->channels = img->channels;
+    outputImage->pixels = (unsigned char*)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
+    if (!outputImage->pixels) {
+        free(outputImage);
+        printf("Error allocating memory for output image\n");
+        return NULL;
+    }
+
+    float KX[] = {
+        -1, 0, 1,
+        -2, 0, 2,
+        -1, 0, 1
+    };
+
+    float KY[] = {
+        -1, -2, -1,
+        0, 0, 0,
+        1, 2, 1
+    };
+
+    // Traverse each pixel in the image
+    for (int imgY = 0; imgY < img->height; imgY++) {
+        for (int imgX = 0; imgX < img->width; imgX++) {
+            // Process each channel (e.g., R, G, B for RGB)
+            for (int channelIndex = 0; channelIndex < img->channels; channelIndex++) {
+                float pixelValueX = 0.0f;
+                float pixelValueY = 0.0f;
+
+                // Traverse each position in the kernel
+                for (int kernelY = -1; kernelY <= 1; kernelY++) {
+                    for (int kernelX = -1; kernelX <= 1; kernelX++) {
+
+                        // Calculate the position of the neighboring pixel, clamped to image boundaries
+                        int pixelX = clamp(imgX + kernelX, 0, img->width - 1);
+                        int pixelY = clamp(imgY + kernelY, 0, img->height - 1);
+
+                        // Calculate the position (index) in the image and kernel
+                        int pixelIndex = (pixelY * img->width + pixelX) * img->channels + channelIndex;
+                        int kernelIndex = (kernelY + 1) * 3 + (kernelX + 1);
+
+                        pixelValueX += img->pixels[pixelIndex] * KX[kernelIndex];
+                        pixelValueY += img->pixels[pixelIndex] * KY[kernelIndex];
+                    }
+                }
+
+                // Do the calculation of the pixel value and clamp it to the 0-255 range
+                int pixelCalculatedValue = clamp(sqrt(pixelValueX * pixelValueX + pixelValueY * pixelValueY), 0, 255);
+
+                // Set the output pixel value
+                int outputIndex = (imgY * img->width + imgX) * img->channels + channelIndex;
+                outputImage->pixels[outputIndex] = (unsigned char)pixelCalculatedValue;
+            }
+        }
+    }
+
+    return outputImage;
 }
 
 /** @brief Compare two images to determine if they are the same (within a 1 degree of tolerance)

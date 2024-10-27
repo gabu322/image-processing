@@ -5,25 +5,38 @@
 
 
 int main() {
-    //Open image twocats.jpg in the test_images folder, transform it to black and white and save it as twocats_bw.png in the output_images folder
-    //Then, compare twocats_bw.png with twocats_blur_01.png and print the number of different pixels
-    Image* baseImage = loadImage("test_images/twocats.png");
-    Image* bwImage = convertBnW(baseImage);
+    Image* img = loadImage("test_images/twocats.png");
 
-    saveImage("output_images/twocats_bw.png", bwImage);
+    float kernel[] = {
+        0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0,
+        0, 0, 0.5, 0.5, 0,
+        0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0
+    };
 
-    Image* blurImage = applyBlur(bwImage, 3);
-    saveImage("output_images/twocats_blur_05.png", blurImage);
+    img = convertBnW(img);
+    img = applySharpen(img, 4);
 
-    Image* test_result_image = loadImage("test_results/twocats_blur_07.png");
+    Image* compareImage = loadImage("test_results/twocats_sharp_09.png");
 
-    int differentPixels = compareImages(blurImage, test_result_image);
-    printf("Images are the same? %d\n", differentPixels);
+    if (compareImage == NULL) {
+        printf("Error loading compare image\n");
+        freeImage(img);
+        return 1;
+    }
 
+    bool result = compareImages(img, compareImage);
 
-    free_image(baseImage);
-    free_image(bwImage);
-    free_image(blurImage);
-    free_image(test_result_image);
+    if (result) {
+        printf("Images are the same\n");
+    }
+    else {
+        printf("Images are different\n");
+    }
+
+    saveImage("output_images/blob.png", img);
+
+    freeImage(img);
     return 0;
 }
