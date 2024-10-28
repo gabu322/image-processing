@@ -230,7 +230,6 @@ Image* applyKernel(const Image* img, const float* kernel, const int kernelSize) 
     return output;
 }
 
-
 /** @brief Apply a blur effect to an image, based on a value of blurLevel that will transform in a kernel of size (blurLevel * 2 + 1)
  *
  * @param img The image that will be applied the blur
