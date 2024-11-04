@@ -1,4 +1,3 @@
-// #include "image_functions_en.h"
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -13,9 +12,8 @@ typedef struct {
     int width;
     int height;
     int channels;
-    unsigned char* pixels;
+    unsigned char *pixels;
 } Image;
-
 
 /** @brief Load an image from a file
  *
@@ -23,16 +21,16 @@ typedef struct {
  *
  * @return Returns a pointer to the loaded image, or NULL if the image could not be loaded
  */
-Image* loadImage(const char* filename) {
+Image *loadImage(const char *filename) {
     int width, height, channels;
 
-    unsigned char* imgData = stbi_load(filename, &width, &height, &channels, 0);
+    unsigned char *imgData = stbi_load(filename, &width, &height, &channels, 0);
     if (!imgData) {
         printf("Error loading image: %s\n", filename);
         return NULL;
     }
 
-    Image* img = (Image*)malloc(sizeof(Image));
+    Image *img = (Image *)malloc(sizeof(Image));
     if (!img) {
         printf("Error allocating memory for image structure.\n");
         stbi_image_free(imgData);
@@ -54,13 +52,12 @@ Image* loadImage(const char* filename) {
  * @param img The image that will be saved
  *
  */
-void saveImage(const char* filename, const Image* img) {
+void saveImage(const char *filename, const Image *img) {
     bool imageSaved = stbi_write_png(filename, img->width, img->height, img->channels, img->pixels, img->width * img->channels);
 
     if (imageSaved) {
         printf("Image saved successfully: %s\n", filename);
-    }
-    else {
+    } else {
         printf("Error saving image: %s\n", filename);
     }
 }
@@ -69,7 +66,7 @@ void saveImage(const char* filename, const Image* img) {
  *
  * @param img The image that will be freed
  */
-void freeImage(Image* img) {
+void freeImage(Image *img) {
     stbi_image_free(img->pixels);
     free(img);
 }
@@ -83,8 +80,10 @@ void freeImage(Image* img) {
  * @return The clamped value
  */
 int clamp(int value, int min, int max) {
-    if (value < min) return min;
-    if (value > max) return max;
+    if (value < min)
+        return min;
+    if (value > max)
+        return max;
     return value;
 }
 
@@ -94,8 +93,8 @@ int clamp(int value, int min, int max) {
  *
  * @return The inverted image
  */
-Image* invertPixels(const Image* img) {
-    Image* invertedImage = (Image*)malloc(sizeof(Image));
+Image *invertPixels(const Image *img) {
+    Image *invertedImage = (Image *)malloc(sizeof(Image));
     if (!invertedImage) {
         printf("Error allocating memory for inverted image\n");
         return NULL;
@@ -104,7 +103,7 @@ Image* invertPixels(const Image* img) {
     invertedImage->width = img->width;
     invertedImage->height = img->height;
     invertedImage->channels = img->channels;
-    invertedImage->pixels = (unsigned char*)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
+    invertedImage->pixels = (unsigned char *)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
     if (!invertedImage->pixels) {
         free(invertedImage);
         printf("Error allocating memory for inverted image pixels\n");
@@ -125,14 +124,14 @@ Image* invertPixels(const Image* img) {
  *
  * @return The black and white image
  */
-Image* convertBnW(const Image* img) {
-    Image* convertedImage = (Image*)malloc(sizeof(Image));
+Image *convertBnW(const Image *img) {
+    Image *convertedImage = (Image *)malloc(sizeof(Image));
     if (!convertedImage) {
         printf("Error allocating memory for converted image\n");
         return NULL;
     }
 
-    unsigned char* BnWPixels = (unsigned char*)malloc(img->width * img->height * sizeof(unsigned char));
+    unsigned char *BnWPixels = (unsigned char *)malloc(img->width * img->height * sizeof(unsigned char));
     if (!BnWPixels) {
         printf("Error allocating memory for BnW pixels\n");
         free(convertedImage);
@@ -146,14 +145,11 @@ Image* convertBnW(const Image* img) {
             unsigned char g = img->pixels[i * img->channels + 1];
             unsigned char b = img->pixels[i * img->channels + 2];
             BnWPixels[i] = (unsigned char)round(0.299 * r + 0.587 * g + 0.114 * b);
-        }
-        else if (img->channels == 2) {
+        } else if (img->channels == 2) {
             BnWPixels[i] = img->pixels[i * img->channels];
-        }
-        else if (img->channels == 1) {
+        } else if (img->channels == 1) {
             BnWPixels[i] = img->pixels[i];
-        }
-        else {
+        } else {
             printf("Unsupported image type");
             free(BnWPixels);
             free(convertedImage);
@@ -177,8 +173,8 @@ Image* convertBnW(const Image* img) {
  *
  * @return The image after the kernel has been applied
  */
-Image* applyKernel(const Image* img, const float* kernel, const int kernelSize) {
-    Image* output = (Image*)malloc(sizeof(Image));
+Image *applyKernel(const Image *img, const float *kernel, const int kernelSize) {
+    Image *output = (Image *)malloc(sizeof(Image));
     if (!output) {
         printf("Error allocating memory for output image\n");
         return NULL;
@@ -187,7 +183,7 @@ Image* applyKernel(const Image* img, const float* kernel, const int kernelSize) 
     output->width = img->width;
     output->height = img->height;
     output->channels = img->channels;
-    output->pixels = (unsigned char*)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
+    output->pixels = (unsigned char *)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
     if (!output->pixels) {
         free(output);
         printf("Error allocating memory for output image\n");
@@ -237,14 +233,14 @@ Image* applyKernel(const Image* img, const float* kernel, const int kernelSize) 
  *
  * @return The blurred image
  */
-Image* applyBlur(const Image* img, int blurLevel) {
+Image *applyBlur(const Image *img, int blurLevel) {
     if (blurLevel < 1) {
         printf("Blur level must be at least 1\n");
         return NULL;
     }
 
     int kernelSize = blurLevel * 2 + 1;
-    float* kernel = (float*)malloc(kernelSize * kernelSize * sizeof(float));
+    float *kernel = (float *)malloc(kernelSize * kernelSize * sizeof(float));
     if (!kernel) {
         printf("Error allocating memory for kernel\n");
         return NULL;
@@ -252,13 +248,11 @@ Image* applyBlur(const Image* img, int blurLevel) {
 
     // Create a kernel with equal weights
     float weight = 1.0f / (kernelSize * kernelSize);
-    for (int i = 0; i < kernelSize; i++) {
-        for (int j = 0; j < kernelSize; j++) {
-            kernel[i * kernelSize + j] = weight;
-        }
+    for (int i = 0; i < kernelSize * kernelSize; i++) {
+        kernel[i] = weight;
     }
 
-    Image* blurredImage = applyKernel(img, kernel, kernelSize);
+    Image *blurredImage = applyKernel(img, kernel, kernelSize);
 
     free(kernel);
 
@@ -268,16 +262,17 @@ Image* applyBlur(const Image* img, int blurLevel) {
 /** @brief Apply a sharpen effect to an image
  *
  * @param img The image that will be applied the sharpen effect
+ * @param sharpenLevel The amount of sharpen applied
  *
  * @return The sharpened image
  */
-Image* applySharpen(const Image* img, int sharpenLevel) {
+Image *applySharpen(const Image *img, int sharpenLevel) {
     if (sharpenLevel < 1) {
         printf("Sharpen level must be at least 1\n");
         return NULL;
     }
 
-    Image* sharpenedImage = (Image*)malloc(sizeof(Image));
+    Image *sharpenedImage = (Image *)malloc(sizeof(Image));
     if (!sharpenedImage) {
         printf("Error allocating memory for sharpened image\n");
         return NULL;
@@ -286,14 +281,14 @@ Image* applySharpen(const Image* img, int sharpenLevel) {
     sharpenedImage->width = img->width;
     sharpenedImage->height = img->height;
     sharpenedImage->channels = img->channels;
-    sharpenedImage->pixels = (unsigned char*)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
+    sharpenedImage->pixels = (unsigned char *)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
     if (!sharpenedImage->pixels) {
         free(sharpenedImage);
         printf("Error allocating memory for sharpened image pixels\n");
         return NULL;
     }
 
-    Image* blurredImage = applyBlur(img, sharpenLevel);
+    Image *blurredImage = applyBlur(img, sharpenLevel);
 
     // Traverse each pixel in the image
     for (int imgY = 0; imgY < img->height; imgY++) {
@@ -311,6 +306,7 @@ Image* applySharpen(const Image* img, int sharpenLevel) {
         }
     }
 
+    freeImage(blurredImage);
     return sharpenedImage;
 }
 
@@ -320,8 +316,8 @@ Image* applySharpen(const Image* img, int sharpenLevel) {
  *
  * @return The image after the edge detection has been applied
  */
-Image* applyEdgeDetection(const Image* img) {
-    Image* outputImage = (Image*)malloc(sizeof(Image));
+Image *applyEdgeDetection(const Image *img) {
+    Image *outputImage = (Image *)malloc(sizeof(Image));
     if (!outputImage) {
         printf("Error allocating memory for output image\n");
         return NULL;
@@ -330,7 +326,7 @@ Image* applyEdgeDetection(const Image* img) {
     outputImage->width = img->width;
     outputImage->height = img->height;
     outputImage->channels = img->channels;
-    outputImage->pixels = (unsigned char*)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
+    outputImage->pixels = (unsigned char *)malloc(img->width * img->height * img->channels * sizeof(unsigned char));
     if (!outputImage->pixels) {
         free(outputImage);
         printf("Error allocating memory for output image\n");
@@ -340,14 +336,12 @@ Image* applyEdgeDetection(const Image* img) {
     float KX[] = {
         -1, 0, 1,
         -2, 0, 2,
-        -1, 0, 1
-    };
+        -1, 0, 1};
 
     float KY[] = {
         -1, -2, -1,
         0, 0, 0,
-        1, 2, 1
-    };
+        1, 2, 1};
 
     // Traverse each pixel in the image
     for (int imgY = 0; imgY < img->height; imgY++) {
@@ -394,7 +388,7 @@ Image* applyEdgeDetection(const Image* img) {
  *
  * @return Returns true if the images are the same, and false otherwise
  */
-bool compareImages(const Image* img1, const Image* img2) {
+bool compareImages(const Image *img1, const Image *img2) {
     // Ensure images are the same size
     if (img1->width != img2->width || img1->height != img2->height) {
         printf("Images have different dimensions. Cannot compare.\n");
@@ -409,4 +403,11 @@ bool compareImages(const Image* img1, const Image* img2) {
     }
 
     return true;
+}
+
+bool compareImagesFree(Image *img1, Image *img2) {
+    bool result = compareImages(img1, img2);
+    freeImage(img1);
+    freeImage(img2);
+    return result;
 }
